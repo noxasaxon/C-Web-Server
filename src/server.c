@@ -73,15 +73,21 @@ int send_response(int fd, char *header, char *content_type, void *body, int cont
  */
 void get_d20(int fd)
 {
+    //seed random number generator
+    srand(time(NULL));
+
     // Generate a random number between 1 and 20 inclusive
     int randNum = rand() % 20 + 1;
+
+    char body[4];
+    sprintf(body, "%d/n", randNum);
 
     // Use send_response() to send it back as text/plain data
     char header[15] = "HTTP/1.1 200 OK";
 
     char content_type[20] = "text/plain";
 
-    send_response(fd, header, content_type, randNum, 2);
+    send_response(fd, header, content_type, body, strlen(body));
 }
 
 /**
@@ -118,6 +124,8 @@ void get_file(int fd, struct cache *cache, char *request_path)
     ///////////////////
     // IMPLEMENT ME! //
     ///////////////////
+    //
+    //if file error return resp_404(fd);
 }
 
 /**
@@ -175,7 +183,7 @@ void handle_http_request(int fd, struct cache *cache)
     }else if(strcmp("POST", type) == 0){
         // (Stretch) If POST, handle the post request
 
-    }else resp_404(fd);
+    }
 
 }//end handle_http_request
 
