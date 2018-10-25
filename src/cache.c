@@ -9,19 +9,26 @@
  */
 struct cache_entry *alloc_entry(char *path, char *content_type, void *content, int content_length)
 {
-    ///////////////////
-    // IMPLEMENT ME! //
-    ///////////////////
+    struct cache_entry *ce = malloc(sizeof(*c));
+    c->path = path;
+    c->content_type = content_type;
+    c->content_length = content_length;
+    c->content = content;
+     return ce;
 }
 
 /**
  * Deallocate a cache entry
  */
-void free_entry(struct cache_entry *entry)
+void cache_free(struct cache *cache)
 {
-    ///////////////////
-    // IMPLEMENT ME! //
-    ///////////////////
+    struct cache_entry *cur_entry = cache->head;
+     hashtable_destroy(cache->index);
+     while (cur_entry != NULL) {
+        struct cache_entry *next_entry = cur_entry->next;
+         free_entry(cur_entry);
+         cur_entry = next_entry;
+    }
 }
 
 /**
