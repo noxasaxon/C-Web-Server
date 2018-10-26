@@ -9,19 +9,32 @@
  */
 struct cache_entry *alloc_entry(char *path, char *content_type, void *content, int content_length)
 {
-    struct cache_entry *ce = malloc(sizeof(*c));
-    c->path = path;
-    c->content_type = content_type;
-    c->content_length = content_length;
-    c->content = content;
-     return ce;
+    struct cache_entry *ce = malloc(sizeof *ce);
+
+    // Set the fields in the new cache entry
+    ce->path = malloc(strlen(path) + 1);
+    strcpy(ce->path, path);
+
+    ce->content_type = malloc(strlen(content_type) + 1);
+    strcpy(ce->content_type, content_type);
+
+    ce->content_length = content_length;
+
+    ce->content = malloc(content_length);
+    memcpy(ce->content, content, content_length);
+
+    return ce;
 }
 
 /**
  * Deallocate a cache entry
  */
-void cache_free(struct cache *cache)
+void free_entry(struct cache_entry *entry)
 {
+    free(entry->content_type);
+    free(entry->content);
+    free(entry->path);
+    free(entry);
 }
 
 /**
@@ -84,6 +97,19 @@ struct cache_entry *dllist_remove_tail(struct cache *cache)
 }
 
 /**
+ * Clean out the LRU entries if the cache is oversized
+ */
+void clean_lru(struct cache *cache)
+{
+    while (cache->cur_size > cache->max_size) {
+        struct cache_entry *oldtail = dllist_remove_tail(cache);
+
+        hashtable_delete(cache->index, oldtail->path);
+        free_entry(oldtail);
+    }
+}
+
+/**
  * Create a new cache
  * 
  * max_size: maximum number of entries in the cache
@@ -91,9 +117,37 @@ struct cache_entry *dllist_remove_tail(struct cache *cache)
  */
 struct cache *cache_create(int max_size, int hashsize)
 {
-    ///////////////////
-    // IMPLEMENT ME! //
-    ///////////////////
+    struct cache *cache = malloc(sizeof *cache);
+
+    cache->head = cache->tail = NULL;
+    cache->index = hashtable_create(hashsize, NULL);
+    cache->max_size = max_size;
+    cache->cur_size = 0;
+
+    return cache;
+}
+
+/**
+ * Deallocate a pre-existing cache
+ * Frees all entries from the hashtable and deallocates the hashtable
+ * Frees all entries from the doubly-linked list
+ * Deallocates the cache
+ */
+void cache_free(struct cache *cache)
+{
+    struct cache_entry *cur_entry = cache->head;
+
+    hashtable_destroy(cache->index);
+
+    while (cur_entry != NULL) {
+        struct cache_entry *next_entry = cur_entry->next;
+
+        free_entry(cur_entry);
+
+        cur_entry = next_entry;
+    }
+
+    free(cache);
 }
 
 /**
@@ -105,9 +159,15 @@ struct cache *cache_create(int max_size, int hashsize)
  */
 void cache_put(struct cache *cache, char *path, char *content_type, void *content, int content_length)
 {
-    ///////////////////
-    // IMPLEMENT ME! //
-    ///////////////////
+    struct cache_entry *ce = alloc_entry(path, content_type, content, content_length);
+
+    // Save in the list and hashtable
+    dllist_insert_head(cache, ce);
+    hashtable_put(cache->index, path, ce);
+    cache->cur_size++;
+
+    // Clean out LRU items if necessary
+    clean_lru(cache);
 }
 
 /**
@@ -115,7 +175,32 @@ void cache_put(struct cache *cache, char *path, char *content_type, void *conten
  */
 struct cache_entry *cache_get(struct cache *cache, char *path)
 {
-    ///////////////////
-    // IMPLEMENT ME! //
-    ///////////////////
+    struct cache_entry *ce;
+
+    ce = hashtable_get(cache->index, path);
+
+    if (ce == NULL) {
+        //printf("Miss %s\n", path);
+        return NULL;
+    }
+
+    //printf("Hit %s: %s, %d: %*s\n", path, ce->content_type, ce->content_length, ce->content_length, ce->content);
+
+    // Move to the head of the list
+    dllist_move_to_head(cache, ce);
+
+    return ce;
+}
+
+/**
+ * Remove an item from the cache
+ */
+int cache_remove(struct cache *cache, char *path)
+{
+    // TODO
+
+    (void)cache; // silence ununsed var warnings
+    (void)path;
+
+    return 0;
 }
